@@ -21,6 +21,8 @@ dependencies = [
     # CLI
     "click>=8.1",
     "rich>=13.7",
+    # MCP client (optional — enables codebase cross-referencing via REVIEWER_MCP_URL)
+    "mcp>=1.6.0",
     # Async
     "anyio>=4.4",
     # Logging

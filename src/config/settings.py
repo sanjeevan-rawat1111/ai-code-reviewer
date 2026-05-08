@@ -62,6 +62,15 @@ class Settings(BaseSettings):
     )
     server_port: int = 8090
     server_host: str = "0.0.0.0"
+    mcp_url: str = Field(
+        default="",
+        description=(
+            "MCP server SSE URL for codebase cross-referencing. "
+            "When set, the reviewer performs a 2-phase review: first identifies key symbols, "
+            "then queries the MCP server for their definitions/references before finalising. "
+            "Example: http://localhost:8091/mcp/sse"
+        ),
+    )
 
 
 # Singleton — import and reuse everywhere

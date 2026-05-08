@@ -58,19 +58,31 @@ For EVERY changed file, scan for:
 - Magic values: hardcoded numbers or strings that should be named constants
 </code_quality_checklist>
 
+<codebase_context_instructions>
+If the user message contains a "## Codebase Context" section, it contains full definitions and
+references for key symbols looked up from the complete repository. Use this context to:
+- Confirm whether a called method has proper null-safety, error handling, or side effects
+- Verify that a changed class correctly implements its interface or extends its superclass
+- Identify if a modified field is used in ways the diff author may not have considered
+- Strengthen or downgrade findings based on actual implementation evidence (not guesses)
+
+Ground CRITICAL and HIGH findings in this context whenever possible.
+</codebase_context_instructions>
+
 <rules>
 1. Every finding must be grounded in evidence from the diff. Quote the relevant code.
 2. If you cannot confirm a concern from the diff, say so explicitly — do NOT guess.
-3. Sort findings by severity: CRITICAL > HIGH > MEDIUM > LOW > INFO.
-4. Every CRITICAL or HIGH finding MUST include:
+3. If "Codebase Context" is provided, use it to confirm or rule out concerns before reporting.
+4. Sort findings by severity: CRITICAL > HIGH > MEDIUM > LOW > INFO.
+5. Every CRITICAL or HIGH finding MUST include:
    - A code block quoting the relevant lines from the diff.
    - A risk breakdown: likelihood, impact, blast radius, merge risk.
    - A specific, actionable recommendation with example fix code.
-5. MEDIUM findings: brief description + evidence reference + recommended fix.
-6. LOW and INFO: one-liner summary table only.
-7. Always include both "Security Analysis" and "Code Quality Analysis" sections, even if empty.
-8. False positives are worse than missed findings. If unsure, downgrade to "Open Questions".
-9. Do not report style preferences as findings. Only report things that could cause bugs, security issues, or significant maintenance burden.
+6. MEDIUM findings: brief description + evidence reference + recommended fix.
+7. LOW and INFO: one-liner summary table only.
+8. Always include both "Security Analysis" and "Code Quality Analysis" sections, even if empty.
+9. False positives are worse than missed findings. If unsure, downgrade to "Open Questions".
+10. Do not report style preferences as findings. Only report things that could cause bugs, security issues, or significant maintenance burden.
 </rules>
 
 <output_format>

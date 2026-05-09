@@ -90,7 +90,10 @@ class ReviewEngine:
 
         codebase_context = ""
         if self._settings.mcp_url:
-            codebase_context = await self._fetch_codebase_context(diff)
+            try:
+                codebase_context = await self._fetch_codebase_context(diff)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("mcp.context_fetch_failed: %s — continuing without context", exc)
 
         user_message = _build_user_message(diff, codebase_context)
         messages = [
@@ -135,7 +138,10 @@ class ReviewEngine:
 
         codebase_context = ""
         if self._settings.mcp_url:
-            codebase_context = await self._fetch_codebase_context(diff)
+            try:
+                codebase_context = await self._fetch_codebase_context(diff)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("mcp.context_fetch_failed: %s — continuing without context", exc)
 
         user_message = _build_user_message(diff, codebase_context)
         messages = [
@@ -176,6 +182,9 @@ class ReviewEngine:
 
         context_parts: list[str] = []
         for sym in symbols:
+            if not isinstance(sym, dict):
+                logger.warning("phase1.symbol_skipped: unexpected type %s", type(sym))
+                continue
             name = sym.get("name", "")
             kind = sym.get("kind", "")
             reason = sym.get("reason", "")
@@ -223,14 +232,15 @@ class ReviewEngine:
             response = await self._llm.chat(messages)
             raw = response.text.strip()
 
-            # Strip markdown fences if the model added them
-            raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.IGNORECASE)
-            raw = re.sub(r"\s*```$", "", raw.strip())
+            # Extract JSON object — handles preamble text and markdown fences
+            json_match = re.search(r"\{[\s\S]*\}", raw)
+            if json_match:
+                raw = json_match.group(0)
 
             data = json.loads(raw)
             symbols = data.get("symbols", [])
             if isinstance(symbols, list):
-                return symbols
+                return [s for s in symbols if isinstance(s, dict)]
         except (json.JSONDecodeError, KeyError, Exception) as exc:
             logger.warning("phase1.parse_failed: %s", exc)
 

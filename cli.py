@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """cli.py — ai-code-reviewer command-line interface.
 
 Usage:

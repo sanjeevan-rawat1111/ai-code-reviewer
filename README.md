@@ -4,6 +4,73 @@ LLM-powered code review from the terminal or via HTTP API. Reviews local git dif
 
 Inspired by and adapted from [cortex-agent](../cortex-agent)'s MR review pipeline.
 
+## Architecture
+
+```mermaid
+flowchart TD
+    subgraph ENTRY["📥 INPUT SOURCES"]
+        L["Local git diff\ngit diff base...HEAD"]
+        GH["GitHub Pull Request\nREST API"]
+        GL["GitLab Merge Request\nREST API"]
+        PF[".diff / .patch file"]
+    end
+
+    subgraph CLI_API["🖥️ ENTRY POINTS"]
+        CLI["cli.py\nreview local | github | gitlab | diff\n--stream | --save | --no-stream"]
+        API["server.py\nFastAPI HTTP server\nPOST /review  GET /health"]
+    end
+
+    subgraph CORE["⚙️ CORE PIPELINE"]
+        DIFF["diff.py — DiffFetcher\nfetch + truncate to max_diff_lines\nDiffResult: raw_diff + metadata"]
+        ENG["engine.py — ReviewEngine\nOrchestrates 1-phase or 2-phase flow"]
+    end
+
+    subgraph TWO_PHASE["🔍 2-PHASE MCP FLOW  (when REVIEWER_MCP_URL is set)"]
+        P1["Phase 1 — Symbol Extraction\nanalyze.xml prompt\nLLM identifies key symbols in diff"]
+        MCP["mcp/client.py — MCPClient\ndynamic tool discovery via SSE\nget_definition · get_references"]
+        CTX["Codebase Context\nassembled symbol definitions\n+ reference locations"]
+        P2["Phase 2 — Grounded Review\nreview.xml prompt + diff\n+ injected codebase context"]
+    end
+
+    subgraph LLM_LAYER["🤖 LLM LAYER"]
+        LC["llm.py — LLMClient\nprimary + fallback model\nstream · chat · retry on 429/5xx"]
+        MOD["OpenAI / Gemini / Groq\nAny OpenAI-compatible endpoint"]
+    end
+
+    subgraph OUTPUT["📄 OUTPUT"]
+        RR["report.py — ReviewResult\nfrom_llm_output parser"]
+        MD["Markdown Report\nVerdict · Risk · Security\nCode Quality · Findings table"]
+        SAVE["reports/*.md\nsaved to disk (--save)"]
+        STREAM["Streamed to terminal\nor HTTP SSE response"]
+    end
+
+    subgraph MCP_SERVER["🗄️ CODEBASE MCP SERVER  (codebase-mcp-server)"]
+        IDX["indexer.py\nJava symbol index\nclass · method · field"]
+        TOOLS["tools.py\nsearch_definitions\nget_definition · get_references\nread_file · search_code · repo_map"]
+    end
+
+    subgraph CFG["⚙️ CONFIG  (settings.py)"]
+        ENV["Env vars / .env\nREVIEWER_LLM__MODEL\nREVIEWER_LLM__API_KEY\nREVIEWER_GITHUB__TOKEN\nREVIEWER_GITLAB__TOKEN\nREVIEWER_MCP_URL"]
+    end
+
+    L & GH & GL & PF --> CLI & API
+    CLI & API --> DIFF
+    DIFF --> ENG
+    ENG -->|MCP URL set| P1
+    P1 -->|symbol list| MCP
+    MCP -->|tool calls| TOOLS
+    TOOLS --> IDX
+    MCP --> CTX
+    CTX --> P2
+    P2 --> LC
+    ENG -->|no MCP| LC
+    LC <--> MOD
+    LC --> RR
+    RR --> MD
+    MD --> SAVE & STREAM
+    CFG --> ENG & LC & MCP
+```
+
 ## How It Works
 
 ```
